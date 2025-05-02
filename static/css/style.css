@@ -1,0 +1,141 @@
+body {
+    background-color: #1a1a1a;
+    color: #ffffff;
+}
+
+.card {
+    transition: transform 0.2s;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card-header {
+    background-color: #2d2d2d;
+    border-bottom: 1px solid #404040;
+}
+
+.weather-card {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.stock-card {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.news-card {
+    background: linear-gradient(135deg, #232526 0%, #414345 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.temperature {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.stock-price {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.stock-change.positive {
+    color: #2ecc71;
+}
+
+.stock-change.negative {
+    color: #e74c3c;
+}
+
+.news-title {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.news-source {
+    font-size: 0.9rem;
+    color: #888;
+}
+
+.refresh-time {
+    font-size: 0.8rem;
+    color: #888;
+    text-align: right;
+    margin-top: 10px;
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+}
+
+.alert-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: #ffc107;
+    border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+    background-color: rgba(23, 162, 184, 0.1);
+    color: #17a2b8;
+    border-left: 4px solid #17a2b8;
+}
+
+.alert i {
+    margin-right: 8px;
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: #3498db;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #2980b9;
+}
+
+/* Container spacing */
+.container-fluid {
+    padding: 20px;
+}
+
+/* Card body padding */
+.card-body {
+    padding: 1.25rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .temperature {
+        font-size: 2rem;
+    }
+    
+    .stock-price {
+        font-size: 1.2rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+} 
