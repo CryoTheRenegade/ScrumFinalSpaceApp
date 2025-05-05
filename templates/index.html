@@ -8,6 +8,24 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        .card {
+            cursor: move;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .order-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .order-controls button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+    </style>
 </head>
 <body class="bg-dark text-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
@@ -15,49 +33,196 @@
             <a class="navbar-brand" href="#">
                 <i class="fas fa-rocket me-2"></i>Space Corp Dashboard
             </a>
+            <div class="order-controls">
+                <form action="{{ url_for('reorder') }}" method="post" id="reorderForm">
+                    <input type="hidden" name="order[]" id="cardOrder">
+                </form>
+                <button type="button" class="btn btn-outline-light btn-sm" onclick="document.getElementById('reorderForm').submit()">
+                    <i class="fas fa-save me-1"></i>Save Order
+                </button>
+                <a href="{{ url_for('reset_order') }}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-undo me-1"></i>Reset Order
+                </a>
+            </div>
         </div>
     </nav>
 
     <div class="container-fluid mt-4">
-        <div class="row">
-            <!-- Weather Section -->
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card bg-dark border-secondary">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-cloud-sun me-2"></i>Weather Conditions
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="weather-container"></div>
-                    </div>
+        {% if api_limits %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5 class="alert-heading"><i class="fas fa-exclamation-triangle me-2"></i>API Rate Limits</h5>
+                    <p class="mb-0">The following services have reached their API limits:</p>
+                    <ul class="mb-0 mt-2">
+                        {% for limit in api_limits %}
+                        <li>{{ limit }}</li>
+                        {% endfor %}
+                    </ul>
                 </div>
             </div>
+        </div>
+        {% endif %}
 
-            <!-- Stocks Section -->
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card bg-dark border-secondary">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-chart-line me-2"></i>Space Stocks
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="stocks-container"></div>
+        <div class="row" id="cardContainer">
+            {% for card_type in card_order %}
+                {% if card_type == 'weather' %}
+                <!-- Weather Section -->
+                <div class="col-md-6 col-lg-4 mb-4" data-card-type="weather">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-cloud-sun me-2"></i>Weather Conditions
+                            </h5>
+                            <div class="order-controls">
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('weather', 'up')">
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('weather', 'down')">
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="weather-container">
+                                {% for planet, weather in weather_data.items() %}
+                                <div class="weather-card">
+                                    <h3>{{ planet|capitalize }}</h3>
+                                    <div class="temperature">{{ weather.temperature }}°C</div>
+                                    <div>Condition: {{ weather.condition }}</div>
+                                    <div>Humidity: {{ weather.humidity }}%</div>
+                                    <div>Wind Speed: {{ weather.wind_speed }} km/h</div>
+                                    {% if planet == 'mars' and weather.pressure %}
+                                    <div>Pressure: {{ weather.pressure }} Pa</div>
+                                    {% if weather.sol %}
+                                    <div>Sol (Martian Day): {{ weather.sol }}</div>
+                                    {% endif %}
+                                    {% endif %}
+                                    <div class="refresh-time">Last updated: {{ weather.timestamp }}</div>
+                                    {% if weather.note %}
+                                    <div class="alert alert-info mt-2">{{ weather.note }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="mt-4">
+                                <h6>Historical Weather</h6>
+                                <div class="btn-group mb-3" role="group">
+                                    <a href="{{ url_for('weather_chart', planet='earth') }}" class="btn btn-outline-light btn-sm {% if selected_planet == 'earth' %}active{% endif %}">Earth</a>
+                                    <a href="{{ url_for('weather_chart', planet='mars') }}" class="btn btn-outline-light btn-sm {% if selected_planet == 'mars' %}active{% endif %}">Mars</a>
+                                </div>
+                                <div class="chart-container">
+                                    <img src="{{ url_for('weather_chart', planet=selected_planet) }}" class="img-fluid" alt="Weather Chart">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- News Section -->
-            <div class="col-md-6 col-lg-4 mb-4">
-                <div class="card bg-dark border-secondary">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="fas fa-newspaper me-2"></i>Space News
-                        </h5>
+                {% elif card_type == 'stocks' %}
+                <!-- Stocks Section -->
+                <div class="col-md-6 col-lg-4 mb-4" data-card-type="stocks">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Space Stocks
+                            </h5>
+                            <div class="order-controls">
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('stocks', 'up')">
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('stocks', 'down')">
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="stocks-container">
+                                {% for symbol, stock in stocks_data.items() %}
+                                {% if not stock.error %}
+                                <div class="stock-card">
+                                    <h3>{{ stock.name }}</h3>
+                                    <div class="stock-price">${{ "%.2f"|format(stock.current_price) }}</div>
+                                    <div class="stock-change {% if stock.change >= 0 %}positive{% else %}negative{% endif %}">
+                                        {% if stock.change >= 0 %}+{% endif %}{{ "%.2f"|format(stock.change) }}%
+                                    </div>
+                                    <div>Volume: {{ "{:,}".format(stock.volume) }}</div>
+                                    <div class="refresh-time">Last updated: {{ stock.timestamp }}</div>
+                                    <a href="{{ url_for('stock_chart', symbol=symbol) }}" class="btn btn-outline-light btn-sm mt-2">
+                                        <i class="fas fa-chart-line me-1"></i>View History
+                                    </a>
+                                    {% if stock.note %}
+                                    <div class="alert alert-info mt-2">{{ stock.note }}</div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div id="news-container"></div>
+                </div>
+                {% elif card_type == 'news' %}
+                <!-- News Section -->
+                <div class="col-md-6 col-lg-4 mb-4" data-card-type="news">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-newspaper me-2"></i>Space News
+                            </h5>
+                            <div class="order-controls">
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('news', 'up')">
+                                    <i class="fas fa-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="moveCard('news', 'down')">
+                                    <i class="fas fa-arrow-down"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="news-container">
+                                {% if news_data.error %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    {{ news_data.error }}
+                                </div>
+                                {% elif not news_data.articles %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    No news articles available.
+                                </div>
+                                {% else %}
+                                {% if news_data.note %}
+                                <div class="alert alert-info mb-3">{{ news_data.note }}</div>
+                                {% endif %}
+                                {% for article in news_data.articles %}
+                                <div class="news-card">
+                                    <div class="news-title">{{ article.title }}</div>
+                                    <div class="news-source">{{ article.source.name }}</div>
+                                    <p>{{ article.description }}</p>
+                                    <a href="{{ article.url }}" target="_blank" class="btn btn-primary btn-sm">Read More</a>
+                                    <div class="refresh-time">Published: {{ article.publishedAt }}</div>
+                                </div>
+                                {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Historical Chart Modal -->
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="historyModalLabel">Stock History</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="chart-container">
+                        <img id="modal-chart" class="img-fluid" alt="Stock History Chart">
                     </div>
                 </div>
             </div>
@@ -65,7 +230,22 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        function moveCard(cardType, direction) {
+            const container = document.getElementById('cardContainer');
+            const cards = Array.from(container.children);
+            const currentIndex = cards.findIndex(card => card.dataset.cardType === cardType);
+            
+            if (direction === 'up' && currentIndex > 0) {
+                container.insertBefore(cards[currentIndex], cards[currentIndex - 1]);
+            } else if (direction === 'down' && currentIndex < cards.length - 1) {
+                container.insertBefore(cards[currentIndex + 1], cards[currentIndex]);
+            }
+            
+            // Update hidden input with new order
+            const newOrder = Array.from(container.children).map(card => card.dataset.cardType);
+            document.getElementById('cardOrder').value = newOrder.join(',');
+        }
+    </script>
 </body>
 </html> 

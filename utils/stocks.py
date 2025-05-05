@@ -1,9 +1,68 @@
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import random
 from alpha_vantage.timeseries import TimeSeries
 from alpha_vantage.fundamentaldata import FundamentalData
+
+def get_historical_stock_data(symbol, days=30):
+    """Fetch historical stock data for the specified number of days"""
+    api_key = os.getenv('ALPHA_VANTAGE_API_KEY')
+    if not api_key:
+        return get_simulated_historical_data(symbol, days)
+    
+    try:
+        ts = TimeSeries(key=api_key, output_format='pandas')
+        # Get daily data
+        data, meta_data = ts.get_daily(symbol=symbol, outputsize='compact')
+        
+        # Convert to list of daily data points
+        historical_data = []
+        for date, row in data.iterrows():
+            historical_data.append({
+                'date': date.strftime('%Y-%m-%d'),
+                'open': float(row['1. open']),
+                'high': float(row['2. high']),
+                'low': float(row['3. low']),
+                'close': float(row['4. close']),
+                'volume': int(row['5. volume'])
+            })
+        
+        # Return only the requested number of days
+        return historical_data[-days:]
+        
+    except Exception as e:
+        print(f"Error fetching historical data for {symbol}: {str(e)}")
+        return get_simulated_historical_data(symbol, days)
+
+def get_simulated_historical_data(symbol, days):
+    """Generate simulated historical stock data"""
+    base_price = {
+        'SPCE': 1.50,
+        'BA': 180.00,
+        'LMT': 450.00,
+        'NOC': 420.00,
+        'RTX': 90.00
+    }.get(symbol, 100.00)
+    
+    historical_data = []
+    current_price = base_price
+    
+    for i in range(days):
+        date = (datetime.now() - timedelta(days=days-i-1)).strftime('%Y-%m-%d')
+        daily_change = random.uniform(-0.02, 0.02)
+        current_price *= (1 + daily_change)
+        
+        historical_data.append({
+            'date': date,
+            'open': round(current_price * (1 + random.uniform(-0.01, 0.01)), 2),
+            'high': round(current_price * (1 + random.uniform(0, 0.02)), 2),
+            'low': round(current_price * (1 - random.uniform(0, 0.02)), 2),
+            'close': round(current_price, 2),
+            'volume': int(random.uniform(500000, 5000000))
+        })
+    
+    return historical_data
 
 def get_stock_data():
     # List of space-related companies
@@ -32,19 +91,26 @@ def get_stock_data():
             try:
                 # Get real-time quote
                 data, meta_data = ts.get_quote_endpoint(symbol=company)
-                current_price = float(data['05. price'][0])
-                change_percent = float(data['10. change percent'].replace('%', ''))
-                volume = int(data['06. volume'])
+                
+                # Use iloc for position-based access and handle percentage conversion properly
+                current_price = float(data['05. price'].iloc[0])
+                change_percent_str = data['10. change percent'].iloc[0]
+                change_percent = float(change_percent_str.strip('%'))
+                volume = int(data['06. volume'].iloc[0])
                 
                 # Get company overview
                 overview, _ = fd.get_company_overview(symbol=company)
-                company_name = overview['Name'][0]
+                company_name = overview['Name'].iloc[0]
+                
+                # Get historical data
+                historical_data = get_historical_stock_data(company)
                 
                 stock_data[company] = {
                     'name': company_name,
                     'current_price': current_price,
                     'change': change_percent,
                     'volume': volume,
+                    'historical_data': historical_data,
                     'timestamp': datetime.now().isoformat()
                 }
                 
@@ -58,6 +124,7 @@ def get_stock_data():
                     'current_price': fallback_data[company]['current_price'],
                     'change': fallback_data[company]['change'],
                     'volume': fallback_data[company]['volume'],
+                    'historical_data': get_simulated_historical_data(company, 30),
                     'timestamp': datetime.now().isoformat(),
                     'note': 'Using fallback data due to API issues'
                 }
